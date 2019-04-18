@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Page Title</title>
+</head>
+<body>
+
+
+<h1>VERSION NUMBER:</h1><h1 id = "VERSIONNUMBER"></h1>
+<h1>AVERAGE CLEAR VALUE:</h1><h1 id = "AVGCLEAR"></h1>
+<h1>MAX CLEAR VALUE:</h1><h1 id = "MAXVAL"></h1>
+<h1>MIN CLEAR VALUE:</h1><h1 id = "MINVAL"></h1>
+<h1>ADDRESS VALUE:</h1><h1 id = "ADDRVAL"></h1>
+
+<script src="https://www.gstatic.com/firebasejs/5.7.0/firebase.js"></script>
+<script>
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyC6BXWgFEsYqtIX5HgYskODaCsWVbona_I",
+    authDomain: "good-59c30.firebaseapp.com",
+    databaseURL: "https://good-59c30.firebaseio.com",
+    projectId: "good-59c30",
+    storageBucket: "good-59c30.appspot.com",
+    messagingSenderId: "447314898959"
+  };
+
+  firebase.initializeApp(config);
+  var VERSIONNUMBER = document.getElementById('VERSIONNUMBER');
+  var AVGCLEAR = document.getElementById('AVGCLEAR');
+  var MAXVAL = document.getElementById('MAXVAL');
+  var MINVAL = document.getElementById('MINVAL');
+  var ADDRVAL = document.getElementById('ADDRVAL');
+
+  var dbRef = firebase.database().ref().child('master_esp').limitToLast(1);
+  var minClear = 65535;
+  var maxClear = 0;
+  var windowSize = 10;
+  //size 10, exec every 500ms. 
+  var sw = new Array();
+  //dbRef.on('value', snap => bigOne.innerText = snap.val());
+
+/*
+  function convertASCII(esp_reading){
+    var mystr = "";
+    //mybuildstring start from index 5 and end at index length - 2
+    for(var i = 5; i < esp_reading.length() - 1; i++){
+      mystr += String.fromCharCode(esp_reading[i]);
+    }
+    return mystr;
+  }
+*/
+
+  function slidingWindow(){
+    //mybuildstring is separate by |
+    dbRef.once('value').then(function(snap){
+      snap.forEach(function(inner){
+        //var mybuildstring = "";
+        //mybuildstring start from index 5 and end at index length - 2
+        /*
+        for(var i = 5; i < snap.val().length - 1; i++){
+          mybuildstring += String.fromCharCode(snap.val()[i]);
+        }
+        */
+        var mybuildstring = inner.val();
+        var stringArray = mybuildstring.split('|');
+        var masterInfo = stringArray[0].split(',');
+        var versionVal = masterInfo[2];
+        var clearVal = parseInt(masterInfo[3]);
+        var addrVal = masterInfo[5];
+        sw.push(clearVal);
+        if(sw.length > windowSize){
+          sw.shift();
+        }
+        var sum = 0;
+        for(var i = 0; i < sw.length; i++){
+          sum += sw[i];
+        }
+        if(sw.length == 10){
+          var avgClear = sum / 10; 
+        }
+        else{
+          var avgClear = clearVal;      
+        }
+        if(avgClear > maxClear){
+          maxClear = avgClear;
+        }
+        if(avgClear < minClear){
+          minClear = avgClear;
+        }
+        AVGCLEAR.innerText = avgClear;
+        VERSIONNUMBER.innerText = versionVal;
+        ADDRVAL.innerText = addrVal;
+        MAXVAL.innerText = maxClear;
+        MINVAL.innerText = minClear;
+      })
+    });
+  }
+  slidingWindow();
+  setInterval(slidingWindow, 500);
+
+</script>
+
+</body>
+</html>
